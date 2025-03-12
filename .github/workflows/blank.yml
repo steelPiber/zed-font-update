@@ -92,7 +92,7 @@ jobs:
       
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4  # v3에서 v4로 업데이트
+        uses: actions/upload-artifact@v4 
         with:
           name: test-results-${{ matrix.distro }}
           path: |
@@ -115,7 +115,7 @@ jobs:
           output: 'trivy-results.sarif'
       
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
 
