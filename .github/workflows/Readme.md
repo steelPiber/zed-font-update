@@ -15,10 +15,7 @@
 ### 자동화된 트리거 설정
 워크플로우는 다음 상황에서 자동으로 실행됩니다:
 - `main` 브랜치에 푸시할 때
-- `develop` 브랜치에 푸시할 때
-- `feature/*` 패턴과 일치하는 브랜치에 푸시할 때
-- `release/*` 패턴과 일치하는 브랜치에 푸시할 때
-- `main` 또는 `develop` 브랜치로 PR을 생성할 때
+- `main` 브랜치로 PR을 생성할 때
 - 매주 일요일 자정에 예약 실행 (cron: '0 0 * * 0')
 
 ### 컨테이너화된 테스트
@@ -64,9 +61,9 @@
 name: Enhanced CI with Docker
 on:
   push:
-    branches: [ "main", "develop", "feature/*", "release/*" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
   schedule:
     - cron: '0 0 * * 0'  # 매주 일요일 자정에 실행
 
