@@ -92,7 +92,7 @@ jobs:
       
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # v3에서 v4로 업데이트
         with:
           name: test-results-${{ matrix.distro }}
           path: |
@@ -125,11 +125,14 @@ jobs:
     if: always()
     steps:
       - name: Check build status
-        uses: tecnospeed/actions-workflow-status@master
+        # tecnospeed/actions-workflow-status@master 대신 직접 상태 확인
         id: check
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          sha: ${{ github.sha }}
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
       
       - name: Send notification
         if: steps.check.outputs.status != 'success'
