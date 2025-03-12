@@ -10,7 +10,7 @@
  * jq(JSON Parser)를 사용하여 파일 수정
    
 # 사용 방법
-##1. jq 설치
+## 1. jq 설치
  * fedora
    ```bash
    sudo dnf install jq
@@ -19,16 +19,27 @@
    ```bash
    sudo apt-get install jq
    ```
-##2. zed 설치
+## 2. zed 설치
  * [Zed 공식](https://zed.dev/) 홈페이지나 패키지 관리자를 통해 최신 버전을 설치
 
 # 실행
-##1. 스크립트 다운로드
-##2. 실행 권한 부여
-##3. 스크립트 실행
+## 1. 스크립트 다운로드
+   * 이 저장소를 클론하거나, update_zed_font.sh 파일만 받아옴
+     ```bash
+     git clone
+     cd 
+     ```
+## 2. 실행 권한 부여
+     ```bash
+     chmod + update_zed_font.sh 
+     ```
+## 3. 스크립트 실행
+   ```bash
+     ./update_zed_font.sh 
+   ```
    * 실행 후, `~/.config/zed/settings.json` 파일 내에 폰트 설정이 자동으로 추가/갱신 됨
    * 만약 `settings.json` 파일이 존재하지 않는다면, 빈 JSON{}파일을 생성한 뒤 설정을 추가함
-##4. Zed 재시작
+## 4. Zed 재시작
    * 이미 Zed를 실행 중이라면 종료 후 다시 시작할 것
    * 이후 Zed 편집기 내에서 코드/텍스트와 UI에 한글 폰트가 적용되어 보임
 
