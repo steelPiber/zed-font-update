@@ -1,0 +1,142 @@
+name: Enhanced CI with Docker
+on:
+  push:
+    branches: [ "main", "develop", "feature/*", "release/*" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '0 0 * * 0'  # 매주 일요일 자정에 실행
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro: [ fedora:37, debian:stable, ubuntu:22.04, alpine:latest, centos:stream9 ]
+      fail-fast: false  # 하나의 테스트가 실패해도 다른 테스트는 계속 진행
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 전체 히스토리 가져오기
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.distro }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ matrix.distro }}-
+      
+      - name: Run tests in ${{ matrix.distro }} container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.distro }}
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            
+            # 배포판 식별 및 패키지 설치
+            if command -v dnf >/dev/null; then
+              echo "::group::Setup Fedora/RHEL based system"
+              dnf update -y
+              dnf install -y jq shellcheck git make gcc g++ python3 python3-pip
+              echo "::endgroup::"
+            elif command -v apt-get >/dev/null; then
+              echo "::group::Setup Debian/Ubuntu based system"
+              apt-get update
+              apt-get install -y jq shellcheck git make gcc g++ python3 python3-pip
+              echo "::endgroup::"
+            elif command -v apk >/dev/null; then
+              echo "::group::Setup Alpine based system"
+              apk update
+              apk add jq shellcheck git make gcc g++ python3 py3-pip
+              echo "::endgroup::"
+            else
+              echo "Unsupported package manager"
+              exit 1
+            fi
+            
+            # 종속성 설치
+            echo "::group::Install Dependencies"
+            if [ -f "requirements.txt" ]; then
+              python3 -m pip install -r requirements.txt
+            fi
+            echo "::endgroup::"
+            
+            # 코드 정적 분석
+            echo "::group::Static Analysis"
+            shellcheck *.sh || true
+            if command -v pylint >/dev/null; then
+              python3 -m pip install pylint
+              pylint --disable=C0111,C0103 *.py || true
+            fi
+            echo "::endgroup::"
+            
+            # 테스트 실행
+            echo "::group::Run Tests"
+            if [ -f "Makefile" ] && grep -q "test" Makefile; then
+              make test
+            elif [ -f "tests/run_tests.sh" ]; then
+              ./tests/run_tests.sh
+            elif [ -d "tests" ] && command -v pytest >/dev/null; then
+              python3 -m pip install pytest
+              pytest tests/
+            else
+              echo "No test framework detected"
+            fi
+            echo "::endgroup::"
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.distro }}
+          path: |
+            test-results/
+            **/*.log
+          retention-days: 7
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: always()
+    steps:
+      - name: Check build status
+        uses: tecnospeed/actions-workflow-status@master
+        id: check
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.sha }}
+      
+      - name: Send notification
+        if: steps.check.outputs.status != 'success'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: ci-alerts
+          SLACK_COLOR: ${{ steps.check.outputs.status == 'success' && 'good' || 'danger' }}
+          SLACK_TITLE: CI Pipeline ${{ steps.check.outputs.status }}
+          SLACK_MESSAGE: "Repository: ${{ github.repository }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nStatus: ${{ steps.check.outputs.status }}"
