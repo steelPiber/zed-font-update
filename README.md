@@ -27,8 +27,8 @@
 ## 1. 스크립트 다운로드
    * 이 저장소를 클론하거나, update_zed_font.sh 파일만 받아옴
      ```bash
-     git clone
-     cd 
+     git clone https://github.com/steelPiber/zed-font-update.git
+     cd zed-font-update
      ```
 ## 2. 실행 권한 부여
      ```bash
